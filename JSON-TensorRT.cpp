@@ -45,10 +45,10 @@ static const int OUTPUT_SIZE = 1000;
 static const int VGG_MEAN[3] = {124, 117, 104};
 static string DIR_PATH;
 
--/**
-- * Implementation of the ILogger interface that prints any errors encountered during
-- * network construction and inferencing.
-- */
+/**
+ * Implementation of the ILogger interface that prints any errors encountered during
+ * network construction and inferencing.
+ */
 class Logger : public ILogger {
     
     void log(Severity severity, const char* msg) override {
@@ -60,10 +60,10 @@ class Logger : public ILogger {
 
 } gLogger;
 
--/**
-- * Implementation of the IProfiler interface that prints the times it takes for each
-- * layer to transform a tensor during inferencing.
-- */
+/**
+ * Implementation of the IProfiler interface that prints the times it takes for each
+ * layer to transform a tensor during inferencing.
+ */
 class Profiler : public IProfiler {
 
     void reportLayerTime(const char* layerName, float ms) override {
@@ -76,19 +76,19 @@ class Profiler : public IProfiler {
 
 } gProfiler;
 
--/**
-- * Stores the values of a JSON array of bias values into a vector.
-- */
+/**
+ * Stores the values of a JSON array of bias values into a vector.
+ */
 void parseBiases(vector<float>& vBiases, Json::Value& biases) {
     for (Json::ArrayIndex i = 0; i < biases.size(); i++) {
         vBiases.push_back(biases[i].asFloat());
     }
 }
 
--/**
-- * Stores the values of a nested JSON array of weight values into a vector.
-- * 2D flattening is implemented.
-- */
+/**
+ * Stores the values of a nested JSON array of weight values into a vector.
+ * 2D flattening is implemented.
+ */
 void parse2DWeights(vector<float>& vWeights, Json::Value& weights, int step) {
     for (Json::ArrayIndex j = 0; j < weights[0].size(); j++) {
         for (int i = 0; i < step; i++) {
@@ -99,10 +99,10 @@ void parse2DWeights(vector<float>& vWeights, Json::Value& weights, int step) {
     }
 }
 
--/**
-- * Stores the values of a quadrupally nested JSON array of weight values into a vector.
-- * 4D flattening is implemented. Note that these weights are flattened into a KCRS format.
-- */
+/**
+ * Stores the values of a quadrupally nested JSON array of weight values into a vector.
+ * 4D flattening is implemented. Note that these weights are flattened into a KCRS format.
+ */
 void parse4DWeights(vector<float>& vWeights, Json::Value& weights) {
     for (Json::ArrayIndex i = 0; i < weights.size(); i++) {
         for (Json::ArrayIndex j = 0; j < weights[0].size(); j++) {
@@ -115,9 +115,9 @@ void parse4DWeights(vector<float>& vWeights, Json::Value& weights) {
     }
 }
 
--/**
-- * Modifies a name until it is unique, starts tracking it, and returns it.
-- */
+/**
+ * Modifies a name until it is unique, starts tracking it, and returns it.
+ */
 string uniqify(set<string>& layer_names, string name) {
     while (layer_names.find(name) != layer_names.end()) {
         name += "I";
@@ -248,10 +248,10 @@ ITensor* createReLu(INetworkDefinition* network, ITensor& input, set<string>& la
     return rl->getOutput(0);
 }
 
--/**
-- * Parses a JSON structure storing the representation of a neural network into
-- * a serialized TensorRT model
-- */
+/**
+ * Parses a JSON structure storing the representation of a neural network into
+ * a serialized TensorRT model
+ */
 void APIToModel(IHostMemory **modelStream) {
     
     // create the builder
@@ -376,9 +376,9 @@ bool readImage(const string fileName, float* data) {
     return true;
 }
 
--/**
-- * Performs synchronous inference on files in a directory and stores results in a vector of outputs.
-- */
+/**
+ * Performs synchronous inference on files in a directory and stores results in a vector of outputs.
+ */
 void doInference(IExecutionContext& context, string dir, vector<float*>& output, int batchSize, ofstream& o_stream) {
     const ICudaEngine& engine = context.getEngine();
     // input and output buffer pointers that we pass to the engine - the engine requires exactly 2
