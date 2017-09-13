@@ -1,3 +1,5 @@
+// TODO: Implement memory deallocation
+
 #include "NvInfer.h"
 #include "NvUtils.h"
 #include "/usr/people/bodun/include/cuda_runtime_api.h"
@@ -43,6 +45,10 @@ static const int OUTPUT_SIZE = 1000;
 static const int VGG_MEAN[3] = {124, 117, 104};
 static string DIR_PATH;
 
+-/**
+- * Implementation of the ILogger interface that prints any errors encountered during
+- * network construction and inferencing.
+- */
 class Logger : public ILogger {
     
     void log(Severity severity, const char* msg) override {
@@ -54,6 +60,10 @@ class Logger : public ILogger {
 
 } gLogger;
 
+-/**
+- * Implementation of the IProfiler interface that prints the times it takes for each
+- * layer to transform a tensor during inferencing.
+- */
 class Profiler : public IProfiler {
 
     void reportLayerTime(const char* layerName, float ms) override {
@@ -66,21 +76,19 @@ class Profiler : public IProfiler {
 
 } gProfiler;
 
-int ReverseInt (int i) {
-    unsigned char ch1, ch2, ch3, ch4;
-    ch1=i&255;
-    ch2=(i>>8)&255;
-    ch3=(i>>16)&255;
-    ch4=(i>>24)&255;
-    return((int)ch1<<24)+((int)ch2<<16)+((int)ch3<<8)+ch4;
-}
-
+-/**
+- * Stores the values of a JSON array of bias values into a vector.
+- */
 void parseBiases(vector<float>& vBiases, Json::Value& biases) {
     for (Json::ArrayIndex i = 0; i < biases.size(); i++) {
         vBiases.push_back(biases[i].asFloat());
     }
 }
 
+-/**
+- * Stores the values of a nested JSON array of weight values into a vector.
+- * 2D flattening is implemented.
+- */
 void parse2DWeights(vector<float>& vWeights, Json::Value& weights, int step) {
     for (Json::ArrayIndex j = 0; j < weights[0].size(); j++) {
         for (int i = 0; i < step; i++) {
@@ -91,7 +99,10 @@ void parse2DWeights(vector<float>& vWeights, Json::Value& weights, int step) {
     }
 }
 
-//TensorRT is in KCRS format
+-/**
+- * Stores the values of a quadrupally nested JSON array of weight values into a vector.
+- * 4D flattening is implemented. Note that these weights are flattened into a KCRS format.
+- */
 void parse4DWeights(vector<float>& vWeights, Json::Value& weights) {
     for (Json::ArrayIndex i = 0; i < weights.size(); i++) {
         for (Json::ArrayIndex j = 0; j < weights[0].size(); j++) {
@@ -104,6 +115,9 @@ void parse4DWeights(vector<float>& vWeights, Json::Value& weights) {
     }
 }
 
+-/**
+- * Modifies a name until it is unique, starts tracking it, and returns it.
+- */
 string uniqify(set<string>& layer_names, string name) {
     while (layer_names.find(name) != layer_names.end()) {
         name += "I";
@@ -112,6 +126,9 @@ string uniqify(set<string>& layer_names, string name) {
     return name;
 }
 
+/**
+ * Creates a convolutional layer in the TensorRT model being constructed.
+ */
 ITensor* createConvolutional(INetworkDefinition* network, ITensor& input, Json::Value& layer, set<string>& layer_names, map<string, Weights>& weight_map) {
     string uniqueName = uniqify(layer_names, "CV_");
     int num_outputs = layer["num_outputs"].asInt();
@@ -146,6 +163,9 @@ ITensor* createConvolutional(INetworkDefinition* network, ITensor& input, Json::
     return cv->getOutput(0);
 }
 
+/**
+ * Creates a max pooling layer in the TensorRT model being constructed.
+ */
 ITensor* createMaxPool(INetworkDefinition* network, ITensor& input, Json::Value& layer, set<string>& layer_names) {
     string uniqueName = uniqify(layer_names, "MP_");
     int wHeight = layer["window_height"].asInt();
@@ -160,6 +180,9 @@ ITensor* createMaxPool(INetworkDefinition* network, ITensor& input, Json::Value&
     return mp->getOutput(0);
 }
 
+/**
+ * Creates an average pooling layer in the TensorRT model being constructed.
+ */
 ITensor* createAvgPool(INetworkDefinition* network, ITensor& input, Json::Value& layer, set<string>& layer_names) {
     string uniqueName = uniqify(layer_names, "AP_");
     int wHeight = layer["window_height"].asInt();
@@ -174,6 +197,9 @@ ITensor* createAvgPool(INetworkDefinition* network, ITensor& input, Json::Value&
     return ap->getOutput(0);
 }
 
+/**
+ * Creates a fully connected layer in the TensorRT model being constructed.
+ */
 ITensor* createFullyConnected(INetworkDefinition* network, ITensor& input, Json::Value& layer, set<string>& layer_names, map<string, Weights>& weight_map, int step) {
     string uniqueName = uniqify(layer_names, "FC_");
     int num_outputs = layer["num_outputs"].asInt();
@@ -198,6 +224,9 @@ ITensor* createFullyConnected(INetworkDefinition* network, ITensor& input, Json:
     return fc->getOutput(0);
 }
 
+/**
+ * Creates a softmax layer in the TensorRT model being constructed.
+ */
 ITensor* createSoftMax(INetworkDefinition* network, ITensor& input, set<string>& layer_names) {
     string uniqueName = uniqify(layer_names, "SM_");
     auto sm = network->addSoftMax(input);
@@ -207,6 +236,9 @@ ITensor* createSoftMax(INetworkDefinition* network, ITensor& input, set<string>&
     return sm->getOutput(0);
 }
 
+/**
+ * Creates a ReLU layer in the TensorRT model being constructed.
+ */
 ITensor* createReLu(INetworkDefinition* network, ITensor& input, set<string>& layer_names) {
     string uniqueName = uniqify(layer_names, "RL_");
     auto rl = network->addActivation(input, ActivationType::kRELU);
@@ -216,6 +248,10 @@ ITensor* createReLu(INetworkDefinition* network, ITensor& input, set<string>& la
     return rl->getOutput(0);
 }
 
+-/**
+- * Parses a JSON structure storing the representation of a neural network into
+- * a serialized TensorRT model
+- */
 void APIToModel(IHostMemory **modelStream) {
     
     // create the builder
@@ -295,6 +331,9 @@ void APIToModel(IHostMemory **modelStream) {
     builder->destroy();
 }
 
+/**
+ * Reads a file of ground-truth labels into a vector of ints
+ */
 void readLabels(const string fileName, vector<int>& data) {
     ifstream infile(fileName);
     assert(infile.is_open() && "Unable to load label file.");
@@ -304,7 +343,11 @@ void readLabels(const string fileName, vector<int>& data) {
     }
 }
 
-// ImageNet image reader
+/**
+ * Reads in an ImageNet image with pixels stored in text form.
+ * The array is transposed in order to conform with the TensorRT
+ * layer weight arrangement.
+ */
 bool readImage(const string fileName, float* data) {
     ifstream infile(fileName);
     cout << fileName << endl;
@@ -333,6 +376,9 @@ bool readImage(const string fileName, float* data) {
     return true;
 }
 
+-/**
+- * Performs synchronous inference on files in a directory and stores results in a vector of outputs.
+- */
 void doInference(IExecutionContext& context, string dir, vector<float*>& output, int batchSize, ofstream& o_stream) {
     const ICudaEngine& engine = context.getEngine();
     // input and output buffer pointers that we pass to the engine - the engine requires exactly 2
@@ -387,6 +433,9 @@ void doInference(IExecutionContext& context, string dir, vector<float*>& output,
     
 }
 
+/**
+ * Custom comparison struct
+ */
 struct Comp{
     Comp( const float* p ) : _p(p) {}
     bool operator ()(int a, int b) { return _p[a] > _p[b]; }
@@ -443,6 +492,7 @@ int main(int argc, char *argv[]) {
         engine->destroy();
         runtime->destroy();
         
+        // Determining top1 and top5
         int total = 0, top1 = 0, top5 = 0;
         for (unsigned int i = 0; i < output.size(); i++) {
             if (output[i][0] == -1) continue;
