@@ -255,21 +255,16 @@ ITensor* createReLu(INetworkDefinition* network, ITensor& input, set<string>& la
 void APIToModel(IHostMemory **modelStream) {
     
     // create the builder
-    cout << "before create builder" << endl;
     IBuilder* builder = createInferBuilder(gLogger);
-    cout << "after create builder" << endl;
 
     // create the model to populate the network, then set the outputs and create an engine
     INetworkDefinition* network = builder->createNetwork();
    
     ifstream input(DIR_PATH + "input");
-    cout << "before assert" << endl;
     assert(input.is_open() && "Unable to load Json file.");
-    cout << "after assert" << endl;
     Json::CharReaderBuilder rbuilder1;
     string errs1;
     Json::Value root;
-    cout << "before json parse" << endl;
     bool ok = Json::parseFromStream(rbuilder1, input, &root, &errs1);
     input.close();
     assert(ok && "Json file was unable to be parsed into a json object");
@@ -350,7 +345,6 @@ void readLabels(const string fileName, vector<int>& data) {
  */
 bool readImage(const string fileName, float* data) {
     ifstream infile(fileName);
-    cout << fileName << endl;
     if (!infile.is_open()) return false;
     string word;
     vector<string> d1(0);
